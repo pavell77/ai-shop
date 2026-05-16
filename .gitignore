@@ -1,0 +1,44 @@
+/node_modules
+/vendor
+/public/build
+/public/hot
+/public/storage
+/public/fonts-manifest.dev.json
+/storage/*.key
+/storage/pail
+
+.env
+.env.backup
+.env.production
+.env.local
+.env.development
+.env.lab
+
+# Тестування (PHPUnit & Pest)
+.phpunit.result.cache
+/.phpunit.cache
+.pest_architecture_cache
+
+# Логи та тимчасові файли
+*.log
+.DS_Store
+Thumbs.db
+Homestead.json
+Homestead.yaml
+auth.json
+
+# IDE, редактори коду та робочі папки
+/.codex
+/.cursor/
+/.idea
+/.vscode
+/.fleet
+/.nova
+/.zed
+.history/
+*.code-workspace
+.phpactor.json
+_ide_helper.php
+
+# Docker / Sail
+.docker/
