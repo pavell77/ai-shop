@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Role;
 use App\Models\User;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Support\Facades\Auth;
@@ -32,6 +33,12 @@ $register = function () {
 
     event(new Registered($user = User::create($validated)));
 
+    // Наш новий крок: автоматично прив'язуємо роль 'user' до нового покупця
+    $defaultRole = Role::where('name', 'user')->first();
+    if ($defaultRole) {
+        $user->roles()->attach($defaultRole);
+    }
+
     Auth::login($user);
 
     $this->redirect(route('dashboard', absolute: false), navigate: true);
@@ -41,21 +48,18 @@ $register = function () {
 
 <div>
     <form wire:submit="register">
-        <!-- Name -->
         <div>
             <x-input-label for="name" :value="__('Name')" />
             <x-text-input wire:model="name" id="name" class="block mt-1 w-full" type="text" name="name" required autofocus autocomplete="name" />
             <x-input-error :messages="$errors->get('name')" class="mt-2" />
         </div>
 
-        <!-- Email Address -->
         <div class="mt-4">
             <x-input-label for="email" :value="__('Email')" />
             <x-text-input wire:model="email" id="email" class="block mt-1 w-full" type="email" name="email" required autocomplete="username" />
             <x-input-error :messages="$errors->get('email')" class="mt-2" />
         </div>
 
-        <!-- Password -->
         <div class="mt-4">
             <x-input-label for="password" :value="__('Password')" />
 
@@ -67,7 +71,6 @@ $register = function () {
             <x-input-error :messages="$errors->get('password')" class="mt-2" />
         </div>
 
-        <!-- Confirm Password -->
         <div class="mt-4">
             <x-input-label for="password_confirmation" :value="__('Confirm Password')" />
 

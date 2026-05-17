@@ -15,8 +15,12 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
+        // 1. Спочатку створюємо базові ролі (admin, manager, user)
+        $this->call([
+            RoleSeeder::class,
+        ]);
 
+        // 2. Твій існуючий тестовий користувач для входу в адмінку
         User::factory()->create([
             'name' => 'Test User',
             'email' => 'test@example.com',
