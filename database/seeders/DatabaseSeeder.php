@@ -24,27 +24,42 @@ class DatabaseSeeder extends Seeder
             RoleSeeder::class,
         ]);
 
-        // 2. Твій існуючий тестовий користувач для входу в адмінку
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-        ]);
+        // 2. Безпечне створення тестового користувача (тільки якщо його немає)
+        if (!User::where('email', 'test@example.com')->exists()) {
+            User::factory()->create([
+                'name' => 'Test User',
+                'email' => 'test@example.com',
+            ]);
+        }
 
-        // Наші методи доставки
-        DeliveryMethod::create(['name' => 'Нова Пошта', 'code' => 'nova_poshta', 'price' => 80.00]);
-        DeliveryMethod::create(['name' => 'Самовивіз', 'code' => 'pickup', 'price' => 0.00]);
+        // Наші методи доставки (захищені від дублікатів через code)
+        DeliveryMethod::firstOrCreate(
+            ['code' => 'nova_poshta'],
+            ['name' => 'Нова Пошта', 'price' => 80.00]
+        );
+        DeliveryMethod::firstOrCreate(
+            ['code' => 'pickup'],
+            ['name' => 'Самовивіз', 'price' => 0.00]
+        );
 
-        // Наші платіжні драйвери
-        PaymentMethod::create(['name' => 'Monobank (Картка / Apple Pay)', 'code' => 'monobank']);
-        PaymentMethod::create(['name' => 'LiqPay (Приват24)', 'code' => 'liqpay']);
-        PaymentMethod::create(['name' => 'Післяплата при отриманні', 'code' => 'cod']);
+        // Наші платіжні драйвери (захищені від дублікатів через code)
+        PaymentMethod::firstOrCreate(['code' => 'monobank'], ['name' => 'Monobank (Картка / Apple Pay)']);
+        PaymentMethod::firstOrCreate(['code' => 'liqpay'], ['name' => 'LiqPay (Приват24)']);
+        PaymentMethod::firstOrCreate(['code' => 'cod'], ['name' => 'Післяплата при отриманні']);
 
-        // Шаблон листа за замовчуванням
-        NotificationTemplate::create([
-            'code' => 'order_created',
-            'name' => 'Створення замовлення',
-            'subject' => 'Ваше замовлення №{order_id} успішно створено!',
-            'body' => '<h1>Дякуємо за покупку!</h1><p>Сума до сплати: {total_price} грн.</p>'
+        // Шаблон листа за замовчуванням (захищений через code)
+        NotificationTemplate::firstOrCreate(
+            ['code' => 'order_created'],
+            [
+                'name' => 'Створення замовлення',
+                'subject' => 'Ваше замовлення №{order_id} успішно створено!',
+                'body' => '<h1>Дякуємо за покупку!</h1><p>Сума до сплати: {total_price} грн.</p>'
+            ]
+        );
+
+        // 3. Підключаємо наш новий каталог товарів!
+        $this->call([
+            CatalogSeeder::class,
         ]);
     }
 }
