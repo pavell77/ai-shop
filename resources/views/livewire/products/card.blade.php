@@ -2,6 +2,7 @@
 
 use Livewire\Volt\Component;
 use App\Models\Product;
+use App\Services\CartService; // Імпортуємо наш сервіс
 
 new class extends Component {
 
@@ -12,9 +13,16 @@ new class extends Component {
         $this->product = $product->load(['images', 'category']);
     }
 
-    public function addToCart(): void
+    // Впроваджуємо CartService безпосередньо в метод дії
+    public function addToCart(CartService $cart): void
     {
+        // 1. Додаємо товар до бази даних через сервіс
+        $cart->add($this->product->id, 1);
+
+        // 2. Сповіщаємо лічильник у шапці, щоб він перемалював цифру
         $this->dispatch('cart-updated');
+
+        // 3. Зберігаємо флеш-повідомлення (за бажанням можна вивести в інтерфейсі)
         session()->flash('success', "{$this->product->name} додано в кошик!");
     }
 }; ?>
@@ -53,9 +61,13 @@ new class extends Component {
             </span>
             
             <button type="button" 
-                    wire:click="addToCart" 
-                    class="rounded bg-indigo-50 px-2.5 py-1.5 text-xs font-semibold text-indigo-600 shadow-sm hover:bg-indigo-100 transition">
-                В кошик
+                    x-data="{ loading: false }"
+                    x-bind:disabled="loading"
+                    x-on:click.prevent.stop="loading = true; $wire.addToCart().then(() => loading = false)"
+                    class="rounded bg-indigo-50 px-2.5 py-1.5 text-xs font-semibold text-indigo-600 shadow-sm hover:bg-indigo-100 transition disabled:opacity-50">
+                
+                <span x-show="!loading">В кошик</span>
+                <span x-show="loading" style="display: none;">Додаю...</span>
             </button>
         </div>
     </div>
