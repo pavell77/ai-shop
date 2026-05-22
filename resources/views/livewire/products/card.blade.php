@@ -2,7 +2,8 @@
 
 use Livewire\Volt\Component;
 use App\Models\Product;
-use App\Services\CartService; // Імпортуємо наш сервіс
+use App\Services\CartService;
+use Illuminate\Support\Facades\Session; // Імпортуємо фасад для "Laravel Дзен"
 
 new class extends Component {
 
@@ -13,7 +14,6 @@ new class extends Component {
         $this->product = $product->load(['images', 'category']);
     }
 
-    // Впроваджуємо CartService безпосередньо в метод дії
     public function addToCart(CartService $cart): void
     {
         // 1. Додаємо товар до бази даних через сервіс
@@ -22,8 +22,8 @@ new class extends Component {
         // 2. Сповіщаємо лічильник у шапці, щоб він перемалював цифру
         $this->dispatch('cart-updated');
 
-        // 3. Зберігаємо флеш-повідомлення (за бажанням можна вивести в інтерфейсі)
-        session()->flash('success', "{$this->product->name} додано в кошик!");
+        // 3. Зберігаємо флеш-повідомлення через чистий статичний фасад
+        Session::flash('success', "{$this->product->name} додано в кошик!");
     }
 }; ?>
 
