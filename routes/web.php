@@ -1,7 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use Livewire\Volt\Volt; // Фасад уже імпортовано, супер
+use Livewire\Volt\Volt;
 
 Route::view('/', 'welcome');
 
@@ -18,8 +18,9 @@ require __DIR__.'/auth.php';
 // Перенаправлення з головної на товари
 Route::redirect('/', '/products');
 
-// ЗМІНЮЄМО ТУТ: Замість Route::volt пишемо Volt::route
+// Роути каталогу товарів
 Volt::route('/products', 'products.index')->name('products.index');
-
-// І ТУТ ТАКОЖ:
 Volt::route('/products/{product:slug}', 'products.show')->name('products.show');
+
+// НАШ НОВИЙ РОУТ: Сторінка кошика (доступна всім)
+Volt::route('/cart', 'pages.cart')->name('cart');
