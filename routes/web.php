@@ -24,3 +24,5 @@ Volt::route('/products/{product:slug}', 'products.show')->name('products.show');
 
 // НАШ НОВИЙ РОУТ: Сторінка кошика (доступна всім)
 Volt::route('/cart', 'pages.cart')->name('cart');
+
+Volt::route('/checkout', 'pages.checkout')->name('checkout');

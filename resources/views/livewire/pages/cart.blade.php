@@ -170,9 +170,9 @@ new class extends Component {
             </div>
 
             <div class="mt-6">
-                <button type="button" class="w-full rounded-md bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 transition">
+                <a href="{{ route('checkout') }}" wire:navigate class="w-full text-center bg-indigo-600 hover:bg-indigo-700 ...">
                     Оформити замовлення
-                </button>
+                </a>
             </div>
 
             {{-- НАША НОВА КНОПКА ПОВЕРНЕННЯ ДО ПОКУПОК --}}

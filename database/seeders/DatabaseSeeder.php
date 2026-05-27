@@ -42,8 +42,8 @@ class DatabaseSeeder extends Seeder
             ['name' => 'Самовивіз', 'price' => 0.00]
         );
 
-        // Наші платіжні драйвери (захищені від дублікатів через code)
-        PaymentMethod::firstOrCreate(['code' => 'monobank'], ['name' => 'Monobank (Картка / Apple Pay)']);
+        // Наші платіжні драйвери (WayForPay замість Monobank)
+        PaymentMethod::firstOrCreate(['code' => 'wayforpay'], ['name' => 'WayForPay (Картка / Google Pay / Apple Pay)']);
         PaymentMethod::firstOrCreate(['code' => 'liqpay'], ['name' => 'LiqPay (Приват24)']);
         PaymentMethod::firstOrCreate(['code' => 'cod'], ['name' => 'Післяплата при отриманні']);
 
