@@ -5,8 +5,9 @@ use App\Models\DeliveryMethod;
 use App\Models\PaymentMethod;
 use App\Models\Order;
 use App\Models\OrderItem;
-use App\Models\Transaction;
 use App\Services\CartService;
+use App\Services\Notification\NotificationService;
+use App\Services\Payment\PaymentProcessor;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
@@ -88,8 +89,8 @@ new class extends Component {
         return $this->itemsTotal + $this->deliveryPrice;
     }
 
-    // Головний метод оформлення замовлення
-    public function submitOrder(CartService $cartService)
+    // Головний метод оформлення замовлення з впровадженням залежностей абстрактної моделі
+    public function submitOrder(CartService $cartService, NotificationService $notifier)
     {
         // 1. Валідація даних
         $this->validate([
@@ -117,56 +118,53 @@ new class extends Component {
             return;
         }
 
-        $orderId = null;
-
-        // 2. Безпечна транзакція
-        DB::transaction(function () use ($cartService, $cartItems, &$orderId) {
+        // 2. Безпечна транзакція (створення сутностей замовлення)
+        $order = DB::transaction(function () use ($cartItems) {
             
-            // Створюємо замовлення
+            // Створюємо базове замовлення
             $order = Order::create([
                 'user_id' => Auth::id() ?? null,
                 'delivery_method_id' => $this->selectedDeliveryId,
                 'payment_method_id' => $this->selectedPaymentId,
                 'total_price' => $this->total,
-                'status' => 'pending',
+                'status' => 'pending', // Базовий початковий статус, стратегія його оновить за потреби
                 'delivery_status' => 'pending',
                 'customer_name' => $this->name,
                 'customer_phone' => $this->phone,
                 'delivery_address' => $this->deliveryAddress,
             ]);
 
-            $orderId = $order->id;
-
-            // Створюємо товари замовлення зі зліпком цін на момент покупки
+            // Створюємо товари замовлення
             foreach ($cartItems as $item) {
                 OrderItem::create([
                     'order_id'   => $order->id,
-                    'product_id' => $item->product->id,    // Дістаємо ID з моделі Product
-                    'price'      => $item->product->price, // Фіксуємо поточну ціну продукту
-                    'quantity'   => $item->quantity,       // Кількість з кошика
+                    'product_id' => $item->product->id,    
+                    'price'      => $item->product->price, 
+                    'quantity'   => $item->quantity,       
                 ]);
             }
 
-            // Створюємо первинну транзакцію в стані pending
-            Transaction::create([
-                'order_id' => $order->id,
-                'payment_method_id' => $this->selectedPaymentId,
-                'amount' => $this->total,
-                'status' => 'pending',
-            ]);
+            return $order;
         });
 
-        // 3. Очищаємо кошик після успішного збереження в БД
+        // 3. Очищаємо кошик після успішного збереження ядра замовлення в БД
         $cartService->clear();
 
-        // 4. Платіжний роутинг
+        // 4. Робота через абстрактний процесор стратегій
         $paymentMethod = $this->paymentMethods->firstWhere('id', $this->selectedPaymentId);
+        
+        $processor = new PaymentProcessor($notifier);
+        $strategy  = $processor->getStrategy($paymentMethod);
 
-        if ($paymentMethod && str_contains(strtolower($paymentMethod->name), 'wayforpay')) {
-            return redirect()->route('payment.wayforpay', ['order' => $orderId]);
+        // Виконуємо чисту бізнес-логіку без редиректів всередині
+        $result = $strategy->process($order);
+
+        // 5. Оскільки ми перебуваємо всередині Livewire, сам компонент робить фінальний редирект
+        if ($result->isOnline()) {
+            return redirect()->to($result->getRedirectUrl());
         }
 
-        return redirect()->route('checkout.success', ['order' => $orderId]);
+        return redirect()->route('checkout.success', ['order' => $order->id]);
     }
 }; ?><div class="py-12 text-white">
     <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">

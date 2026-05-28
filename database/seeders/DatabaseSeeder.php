@@ -3,12 +3,10 @@
 namespace Database\Seeders;
 
 use App\Models\User;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
-use Illuminate\Database\Seeder;
-
 use App\Models\DeliveryMethod;
 use App\Models\PaymentMethod;
-use App\Models\NotificationTemplate;
+use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
 {
@@ -19,12 +17,14 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // 1. Спочатку створюємо базові ролі (admin, manager, user)
+        // 1. Запускаємо ізольовані класи-сідери через масив call
         $this->call([
-            RoleSeeder::class,
+            RoleSeeder::class,               // Базові ролі (admin, manager, user)
+            CatalogSeeder::class,            // Категорії та товари
+            NotificationTemplateSeeder::class, // Наші нові динамічні шаблони листів
         ]);
 
-        // 2. Безпечне створення тестового користувача (тільки якщо його немає)
+        // 2. Безпечне створення тестового користувача
         if (!User::where('email', 'test@example.com')->exists()) {
             User::factory()->create([
                 'name' => 'Test User',
@@ -32,7 +32,7 @@ class DatabaseSeeder extends Seeder
             ]);
         }
 
-        // Наші методи доставки (захищені від дублікатів через code)
+        // 3. Методи доставки (залишаємо тут, або пізніше теж винесемо в окремий DeliveryMethodSeeder)
         DeliveryMethod::firstOrCreate(
             ['code' => 'nova_poshta'],
             ['name' => 'Нова Пошта', 'price' => 80.00]
@@ -42,24 +42,9 @@ class DatabaseSeeder extends Seeder
             ['name' => 'Самовивіз', 'price' => 0.00]
         );
 
-        // Наші платіжні драйвери (WayForPay замість Monobank)
+        // 4. Платіжні драйвери
         PaymentMethod::firstOrCreate(['code' => 'wayforpay'], ['name' => 'WayForPay (Картка / Google Pay / Apple Pay)']);
         PaymentMethod::firstOrCreate(['code' => 'liqpay'], ['name' => 'LiqPay (Приват24)']);
         PaymentMethod::firstOrCreate(['code' => 'cod'], ['name' => 'Післяплата при отриманні']);
-
-        // Шаблон листа за замовчуванням (захищений через code)
-        NotificationTemplate::firstOrCreate(
-            ['code' => 'order_created'],
-            [
-                'name' => 'Створення замовлення',
-                'subject' => 'Ваше замовлення №{order_id} успішно створено!',
-                'body' => '<h1>Дякуємо за покупку!</h1><p>Сума до сплати: {total_price} грн.</p>'
-            ]
-        );
-
-        // 3. Підключаємо наш новий каталог товарів!
-        $this->call([
-            CatalogSeeder::class,
-        ]);
     }
 }
