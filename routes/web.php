@@ -2,7 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use Livewire\Volt\Volt;
-use App\Http\Controllers\PaymentController; // Створимо контролер трохи пізніше
+use App\Http\Controllers\PaymentController;
 
 Route::view('/', 'welcome');
 
@@ -23,17 +23,27 @@ Route::redirect('/', '/products');
 Volt::route('/products', 'products.index')->name('products.index');
 Volt::route('/products/{product:slug}', 'products.show')->name('products.show');
 
-// НАШ НОВИЙ РОУТ: Сторінка кошика (доступна всім)
+// Сторінка кошика (доступна всім)
 Volt::route('/cart', 'pages.cart')->name('cart');
 
+// Сторінка оформлення замовлення
 Volt::route('/checkout', 'pages.checkout')->name('checkout');
 
-// Сторінка успішного замовлення (наприклад, для післяплати)
-Route::get('/checkout/success/{order}', function (\App\Models\Order $order) {
-    return "<h1>Дякуємо! Замовлення №{$order->id} успішно оформлено!</h1>" .
-           "<p>Сума до сплати: {$order->total_price} ₴. Наш менеджер зв'яжеться з вами.</p>";
-})->name('checkout.success');
+/*
+|--------------------------------------------------------------------------
+| ПЛАТІЖНА ІНТЕГРАЦІЯ WAYFORPAY
+|--------------------------------------------------------------------------
+*/
 
-// Проміжний роут для генерації та автонадсилання HTML-форми банку WayForPay
+// 1. Сюди переходить юзер після натискання кнопки чекауту (Генерація форми та підпису)
 Route::get('/payment/wayforpay/{order}', [PaymentController::class, 'redirectToGateway'])
     ->name('payment.wayforpay');
+
+// 2. Сюди стукають сервери банку в фоні, коли оплата пройшла (Наш Webhook-колбек)
+Route::post('/payment/wayforpay/callback', [PaymentController::class, 'callback'])
+    ->name('payment.wayforpay.callback');
+
+// 3. Сюди повертається сам клієнт кнопкою зі сторінки банку (Наша сторінка подяки)
+// Використовуємо Route::any, бо банк іноді повертає користувача через POST-запит
+Route::any('/checkout/success/{order}', [PaymentController::class, 'success'])
+    ->name('checkout.success');
