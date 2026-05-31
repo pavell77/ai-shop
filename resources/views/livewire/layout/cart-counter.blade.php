@@ -19,11 +19,13 @@ new class extends Component {
     }
 }; ?>
 
-{{-- Компонент нічого не рендерить візуально, а просто синхронізує стан з Alpine.js --}}
+{{-- Компонент синхронізує стан з Alpine.js при кожному завантаженні (враховуючи wire:navigate) --}}
 <div x-data
      x-init="
         if (!Alpine.store('cart')) {
             Alpine.store('cart', { count: {{ $count }} });
+        } else {
+            Alpine.store('cart').count = {{ $count }};
         }
         $watch('$wire.count', value => { Alpine.store('cart').count = value })
      "
