@@ -4,7 +4,6 @@ use App\Services\CartService;
 use Livewire\Volt\Component;
 
 new class extends Component {
-    // Змінюємо тип на mixed або прибираємо тип array, щоб сюди залітала колекція Eloquent
     public $items = [];
     public float $totalPrice = 0.00;
 
@@ -26,23 +25,18 @@ new class extends Component {
         $this->loadCart($cartService);
     }
 
-    // Зменшення кількості на -1 (Чистий об'єктний підхід)
     public function decrement(int $productId, CartService $cartService): void
     {
-        // 1. Шукаємо потрібний об'єкт у колекції, порівнюючи з ID всередині моделі Product
         $cartItem = collect($this->items)->first(function($item) use ($productId) {
             return isset($item->product) && $item->product->id === $productId;
         });
 
-        // 2. Якщо об'єкт знайшли і його кількість більше 1 — зменшуємо на -1 через сервіс
         if ($cartItem && $cartItem->quantity > 1) {
             $cartService->add($productId, -1);
         } else {
-            // 3. Якщо кількість дорівнює 1 — повністю видаляємо позицію
             $cartService->remove($productId);
         }
         
-        // 4. Оновлюємо стейт та тригеримо лічильник у шапці
         $this->dispatch('cart-updated');
         $this->loadCart($cartService);
     }
@@ -66,7 +60,6 @@ new class extends Component {
     
     {{-- ЛІВА ЧАСТИНА: СПИСОК ТОВАРІВ --}}
     <div class="lg:col-span-8 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
-        {{-- Для Eloquent колекцій перевіряємо через метод ->isEmpty() --}}
         @if(blank($items) || (method_exists($items, 'isEmpty') && $items->isEmpty()))
             <div class="text-center py-12">
                 <svg class="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
@@ -91,10 +84,6 @@ new class extends Component {
             <div class="divide-y divide-gray-200 dark:divide-gray-700">
                 @foreach($items as $item)
                     @php
-                        // Якщо в колекції лежать зв'язки або Pivot моделі, витягуємо об'єкт продукту та кількість.
-                        // Зазвичай структура Eloquent для кошика: $item->product або якщо це сама модель Product з pivot.
-                        // Припускаємо, що у тебе $item має відношення 'product' або поля безпосередньо.
-                        // Давай зробимо гнучко: якщо є зв'язок product — беремо його, інакше саму модель.
                         $product = $item->product ?? $item;
                         $quantity = $item->quantity ?? 1;
                         $productImage = $product->images?->first()?->image_path ?? null;
@@ -169,13 +158,14 @@ new class extends Component {
                 </div>
             </div>
 
-            <div class="mt-6">
-                <a href="{{ route('checkout') }}" wire:navigate class="w-full text-center bg-indigo-600 hover:bg-indigo-700 ...">
+            {{-- Кнопка скруглена і розміщена по центру --}}
+            <div class="mt-6 flex flex-col items-center">
+                <a href="{{ route('checkout') }}" wire:navigate class="w-full text-center bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg transition shadow-lg shadow-indigo-600/20">
                     Оформити замовлення
                 </a>
             </div>
 
-            {{-- НАША НОВА КНОПКА ПОВЕРНЕННЯ ДО ПОКУПОК --}}
+            {{-- Кнопка повернення до покупок --}}
             <div class="mt-4 text-center">
                 <a href="{{ route('products.index') }}" 
                    wire:navigate 

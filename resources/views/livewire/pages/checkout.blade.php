@@ -13,21 +13,17 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 
 new class extends Component {
-    // Поля користувача
     public string $name = '';
     public string $phone = '';
     public string $email = '';
-    public string $deliveryAddress = ''; // Додали адресу для БД
+    public string $deliveryAddress = '';
 
-    // Обрані ID
     public ?int $selectedDeliveryId = null;
     public ?int $selectedPaymentId = null;
 
-    // Колекції методів
     public Collection $deliveryMethods;
     public Collection $paymentMethods;
 
-    // Чиста сума товарів
     public float $itemsTotal = 0.00;
 
     public function mount(CartService $cartService): void
@@ -35,13 +31,11 @@ new class extends Component {
         $this->deliveryMethods = DeliveryMethod::all();
         $this->paymentMethods = PaymentMethod::all();
         
-        // Початкові значення
         $this->selectedDeliveryId = $this->deliveryMethods->first()?->id;
         $this->selectedPaymentId = $this->paymentMethods->first()?->id;
         
         $this->itemsTotal = $cartService->getTotalPrice();
 
-        // Якщо користувач авторизований, підставимо його дані
         if (Auth::check()) {
             $user = Auth::user();
             $this->name = $user->name ?? '';
@@ -49,7 +43,6 @@ new class extends Component {
         }
     }
 
-    // Наша залізобетонна Alpine/PHP очистка телефону
     public function updatedPhone(string $value): void
     {
         $cleaned = preg_replace('/[^0-9]/', '', $value);
@@ -65,7 +58,6 @@ new class extends Component {
         $this->phone = $cleaned;
     }
 
-    // Слухач зміни доставки: якщо самовивіз, автозаповнюємо адресу
     public function updatedSelectedDeliveryId($value): void
     {
         $method = $this->deliveryMethods->firstWhere('id', $value);
@@ -76,23 +68,19 @@ new class extends Component {
         }
     }
 
-    // Обчислювана ціна доставки
     public function getDeliveryPriceProperty(): float
     {
         $delivery = $this->deliveryMethods->firstWhere('id', $this->selectedDeliveryId);
         return $delivery ? (float) $delivery->price : 0.00;
     }
 
-    // Обчислюваний фінальний тотал для виведення на екран
     public function getTotalProperty(): float
     {
         return $this->itemsTotal + $this->deliveryPrice;
     }
 
-    // Головний метод оформлення замовлення з впровадженням залежностей абстрактної моделі
     public function submitOrder(CartService $cartService, NotificationService $notifier)
     {
-        // 1. Валідація даних
         $this->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|max:255',
@@ -109,32 +97,26 @@ new class extends Component {
             'deliveryAddress.required' => 'Будь ласка, вкажіть адресу або відділення доставки.',
         ]);
 
-        // Отримуємо колекцію товарів
         $cartItems = $cartService->getItems();
         
-        // Перевіряємо, чи колекція не порожня
         if ($cartItems->isEmpty()) {
             session()->flash('error', 'Ваш кошик порожній.');
             return;
         }
 
-        // 2. Безпечна транзакція (створення сутностей замовлення)
         $order = DB::transaction(function () use ($cartItems) {
-            
-            // Створюємо базове замовлення
             $order = Order::create([
                 'user_id' => Auth::id() ?? null,
                 'delivery_method_id' => $this->selectedDeliveryId,
                 'payment_method_id' => $this->selectedPaymentId,
                 'total_price' => $this->total,
-                'status' => 'pending', // Базовий початковий статус, стратегія його оновить за потреби
+                'status' => 'pending',
                 'delivery_status' => 'pending',
                 'customer_name' => $this->name,
                 'customer_phone' => $this->phone,
                 'delivery_address' => $this->deliveryAddress,
             ]);
 
-            // Створюємо товари замовлення
             foreach ($cartItems as $item) {
                 OrderItem::create([
                     'order_id'   => $order->id,
@@ -147,19 +129,15 @@ new class extends Component {
             return $order;
         });
 
-        // 3. Очищаємо кошик після успішного збереження ядра замовлення в БД
         $cartService->clear();
 
-        // 4. Робота через абстрактний процесор стратегій
         $paymentMethod = $this->paymentMethods->firstWhere('id', $this->selectedPaymentId);
         
         $processor = new PaymentProcessor($notifier);
         $strategy  = $processor->getStrategy($paymentMethod);
 
-        // Виконуємо чисту бізнес-логіку без редиректів всередині
         $result = $strategy->process($order);
 
-        // 5. Оскільки ми перебуваємо всередині Livewire, сам компонент робить фінальний редирект
         if ($result->isOnline()) {
             return redirect()->to($result->getRedirectUrl());
         }
@@ -238,18 +216,18 @@ new class extends Component {
                 </div>
             </div>
 
-            <div class="bg-slate-800 p-6 rounded-lg shadow h-fit space-y-4">
-                <h2 class="text-lg font-medium mb-2">Підсумок замовлення</h2>
-                <div class="flex justify-between text-gray-400">
+            <div class="bg-slate-800 p-6 rounded-lg shadow h-fit flex flex-col items-center space-y-4">
+                <h2 class="text-lg font-medium mb-2 w-full text-left">Підсумок замовлення</h2>
+                <div class="flex justify-between text-gray-400 w-full">
                     <span>Вартість товарів:</span>
                     <span class="font-medium text-white">{{ $itemsTotal }} ₴</span>
                 </div>
-                <div class="flex justify-between text-gray-400">
+                <div class="flex justify-between text-gray-400 w-full">
                     <span>Доставка:</span>
                     <span class="font-medium text-white">{{ $this->deliveryPrice > 0 ? $this->deliveryPrice . ' ₴' : 'Безкоштовно' }}</span>
                 </div>
-                <hr class="border-gray-700">
-                <div class="flex justify-between text-xl font-bold">
+                <hr class="border-gray-700 w-full">
+                <div class="flex justify-between text-xl font-bold w-full">
                     <span>До сплати:</span>
                     <span class="text-indigo-400">{{ $this->total }} ₴</span>
                 </div>
@@ -257,6 +235,18 @@ new class extends Component {
                 <button wire:click="submitOrder" class="w-full mt-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg transition shadow-lg shadow-indigo-600/20">
                     Підтвердити замовлення
                 </button>
+
+                {{-- Наша нова кнопка повернення до покупок на сторінці оформлення --}}
+                <div class="mt-4 text-center">
+                    <a href="{{ route('products.index') }}" 
+                       wire:navigate 
+                       class="inline-flex items-center justify-center gap-1.5 text-sm font-medium text-indigo-400 hover:text-indigo-300 transition group">
+                        <svg class="h-4 w-4 transform group-hover:-translate-x-0.5 transition duration-200" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+                        </svg>
+                        Повернутися до покупок
+                    </a>
+                </div>
             </div>
         </div>
     </div>
