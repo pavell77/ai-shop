@@ -5,15 +5,15 @@ namespace App\Services\Notification;
 use App\Models\Order;
 use App\Models\NotificationTemplate;
 use App\Models\NotificationLog;
+use App\Mail\OrderNotificationMail;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
-use Exception;
 
 class NotificationService
 {
     /**
-     * Відправити динамічний лист по замовленню за кодом шаблону
+     * Відправити динамічний лист по замовленню за кодом шаблону через чергу
      */
     public function sendOrderNotification(string $templateCode, Order $order): void
     {
@@ -35,14 +35,14 @@ class NotificationService
         $subject = str_replace(array_keys($variables), array_values($variables), $template->subject);
         $body    = str_replace(array_keys($variables), array_values($variables), $template->body);
 
-        // Безпечно визначаємо email отримувача: зв'язок моделі -> авторизований юзер -> заглушка
+        // Безпечно визначаємо email отримувача
         $recipientEmail = $order->customer_email 
             ?? $order->email 
             ?? $order->user?->email 
             ?? Auth::user()?->email 
             ?? 'customer@pavell.net';
 
-        // 2. Створюємо запис в історії відправки (NotificationLog)
+        // 2. Створюємо запис в історії відправки зі статусом 'pending'
         $log = NotificationLog::create([
             'user_id'         => $order->user_id ?? Auth::id(),
             'template_id'     => $template->id,
@@ -52,22 +52,7 @@ class NotificationService
             'status'          => 'pending',
         ]);
 
-        try {
-            // 3. Відправляємо чистий HTML
-            Mail::html($body, function ($message) use ($recipientEmail, $subject) {
-                $message->to($recipientEmail)
-                        ->subject($subject);
-            });
-
-            $log->update(['status' => 'sent']);
-        } catch (Exception $e) {
-            // Фіксуємо детальну помилку в системних логах Laravel, щоб не ламати чекаут користувачу
-            Log::error("Mail system error for order #{$order->id}: " . $e->getMessage());
-            
-            $log->update([
-                'status'        => 'failed',
-                'error_message' => substr($e->getMessage(), 0, 500)
-            ]);
-        }
+        // 3. Відправляємо Mailable в чергу, передаючи ID логу для збереження точних статусів
+        Mail::to($recipientEmail)->queue(new OrderNotificationMail($subject, $body, $log->id));
     }
 }
