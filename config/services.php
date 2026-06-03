@@ -35,4 +35,10 @@ return [
         ],
     ],
 
+    'wayforpay' => [
+        'account' => env('WAYFORPAY_MERCHANT_ACCOUNT'),
+        'secret'  => env('WAYFORPAY_SECRET_KEY'),
+        'url'     => env('WAYFORPAY_GATEWAY_URL', 'https://secure.wayforpay.com/pay'),
+    ],
+
 ];

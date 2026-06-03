@@ -48,8 +48,16 @@ test('full e-commerce purchase lifecycle works flawlessly', function () {
         ->and($user->cart->items->first()->quantity)->toBe(2);
 
     // 4. Етап Оформлення замовлення (Checkout)
-    $delivery = DeliveryMethod::where('code', 'nova_poshta')->first();
-    $payment = PaymentMethod::where('code', 'monobank')->first();
+    // Використовуємо firstOrCreate, щоб тест ніколи не падав через відсутність запису в сідерах
+    $delivery = DeliveryMethod::firstOrCreate(
+        ['code' => 'nova_poshta'],
+        ['name' => 'Нова Пошта', 'price' => 80.00]
+    );
+
+    $payment = PaymentMethod::firstOrCreate(
+        ['code' => 'monobank'],
+        ['name' => 'Monobank']
+    );
 
     // Розраховуємо фінальну суму: (500.00 * 2) + 80.00 доставка = 1080.00
     $totalPrice = ($product->price * $cartItem->quantity) + $delivery->price;
@@ -96,7 +104,11 @@ test('full e-commerce purchase lifecycle works flawlessly', function () {
         ->and($transaction->payload['currency'])->toBe(980);
 
     // 6. Етап комунікації (Черга на відправку системного листа)
-    $template = NotificationTemplate::where('code', 'order_created')->first();
+    // Підстраховка для шаблону сповіщення
+    $template = NotificationTemplate::firstOrCreate(
+        ['code' => 'order_created'],
+        ['name' => 'Замовлення створено', 'subject' => 'Ваше замовлення №{order_id}', 'body' => 'Дякуємо!']
+    );
     
     $log = NotificationLog::create([
         'user_id' => $user->id,

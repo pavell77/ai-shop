@@ -9,7 +9,9 @@ return new class extends Migration {
     {
         Schema::create('orders', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            // Було: $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            // Стало:
+            $table->foreignId('user_id')->nullable()->constrained()->onDelete('set null');
             $table->foreignId('delivery_method_id')->constrained();
             $table->foreignId('payment_method_id')->constrained();
             $table->decimal('total_price', 10, 2);
