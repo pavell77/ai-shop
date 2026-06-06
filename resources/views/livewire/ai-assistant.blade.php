@@ -2,6 +2,7 @@
 
 use function Livewire\Volt\{state, mount};
 use Illuminate\Support\Facades\Auth;
+use App\Services\AiService;
 
 state([
     'isOpen' => false,
@@ -11,52 +12,47 @@ state([
 ]);
 
 mount(function () {
-    // Завантажуємо історію чату з сесії або створюємо дефолтне привітання
     $this->messages = session()->get('ai_chat_history', []);
 
     if (empty($this->messages)) {
         $name = Auth::check() ? Auth::user()->name : 'гостю';
         $this->messages[] = [
             'role' => 'assistant',
-            'content' => "Привіт, {$name}! 🤖 Я ШІ-асистент магазину AI-Shop.\nДопоможу знайти потрібні товари, підібрати нейромережу або швидко оформити замовлення прямо тут. Що тебе цікавить?"
+            'content' => "Привіт, {$name}! 🤖 Я твій ШІ-помічник магазину AI-Shop.\nЯ можу підібрати товар або допомогти з оформленням. Що тебе цікавить?"
         ];
         session()->put('ai_chat_history', $this->messages);
     }
 });
 
-$sendMessage = function () {
+$sendMessage = function (AiService $aiService) {
     if (trim($this->input) === '') return;
 
-    // 1. Додаємо повідомлення користувача в масив
+    // 1. Додаємо репліку користувача на екран
     $this->messages[] = [
         'role' => 'user',
         'content' => $this->input
     ];
 
-    $userInput = $this->input;
-    $this->input = '';
     $this->isLoading = true;
-
-    // Зберігаємо проміжний стан у сесію
-    session()->put('ai_chat_history', $this->messages);
-
-    // Логіку запиту до ШІ-клієнта Laravel 13 ми реалізуємо на наступному кроці.
-    // А поки що зробимо імітацію відповіді (Mock-up) для тесту фронтенду:
-    $this->dispatch('simulate-ai-response');
-};
-
-// Тимчасовий слухач для імітації відповіді
-Livewire\Volt\on(['simulate-ai-response' => function () {
-    sleep(1); // Імітуємо затримку мережі
     
+    // Очищаємо поле введення, зберігаємо історію в сесії
+    $currentMessages = $this->messages;
+    $this->input = '';
+    session()->put('ai_chat_history', $currentMessages);
+
+    // 2. Робимо реальний запит до ШІ через наш відмовостійкий сервіс
+    // Ми передаємо всю історію повідомлень, щоб ШІ тримав нитку розмови
+    $aiResponse = $aiService->chat($currentMessages);
+
+    // 3. Додаємо відповідь ШІ в чат
     $this->messages[] = [
         'role' => 'assistant',
-        'content' => "Я отримав твій запит! Зараз я налаштовую інтеграцію з коробковим ШІ в Laravel 13, тому скоро зможу шукати товари по базі даних."
+        'content' => $aiResponse
     ];
-    
+
     session()->put('ai_chat_history', $this->messages);
     $this->isLoading = false;
-}]);
+};
 
 ?>
 
