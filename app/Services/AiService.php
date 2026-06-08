@@ -18,8 +18,8 @@ class AiService
         // 1. Беремо останнє повідомлення користувача
         $lastUserText = end($messages)['content'] ?? 'Привіт';
 
-        // 2. Ініціалізуємо нашого помічника
-        $assistant = new StoreAssistant();
+        // 2. Ініціалізуємо нашого помічника в стандартному режимі (для Gemini)
+        $assistant = new StoreAssistant(false);
 
         /** @var AiManager $aiManager */
         $aiManager = app(AiManager::class);
@@ -29,7 +29,6 @@ class AiService
             $provider = $aiManager->textProvider('gemini');
             $model = config('ai.connections.gemini.model', 'gemini-2.5-flash');
             
-            // Створюємо об'єкт запиту згідно з конструктором пакета
             $agentPrompt = new AgentPrompt(
                 agent: $assistant, 
                 prompt: $lastUserText,
@@ -38,27 +37,22 @@ class AiService
                 model: $model
             );
             
-            // Викликаємо метод prompt()
             $response = $provider->prompt($agentPrompt);
-            
             return $response->text;
             
         } catch (Exception $e) {
             Log::warning("Основний ШІ-провайдер [Gemini] недоступний: " . $e->getMessage());
 
             try {
-                // Пробиваємо глобальний таймаут HTTP-клієнта Laravel перед запитом до Ollama
-                config(['http.timeout' => 300]);
-                config(['ai.providers.ollama.timeout' => 300]); // Про всяк випадок для пакета
-
                 // Fallback-перехід на Ollama
                 $provider = $aiManager->textProvider('ollama');
-                
-                // Витягуємо модель з конфігу (переконайся, що в .env стоїть qwen2.5-coder:7b)
                 $model = config('ai.providers.ollama.model', 'qwen2.5-coder:7b');
                 
+                // Створюємо НОВИЙ полегшений об'єкт асистента спеціально для Оллами
+                $fallbackAssistant = new StoreAssistant(true);
+
                 $agentPrompt = new AgentPrompt(
-                    agent: $assistant,
+                    agent: $fallbackAssistant, // <--- Передаємо легкого агента
                     prompt: $lastUserText,
                     attachments: [],
                     provider: $provider,
@@ -66,12 +60,10 @@ class AiService
                 );
                 
                 $response = $provider->prompt($agentPrompt);
-                
-                return $response->text . "\n\n*(Резервний режим: Ollama)*";
+                return $response->text . "\n\n*(Резервний режим: Локальна Ollama)*";
                 
             } catch (Exception $ollamaException) {
                 Log::critical("Повний крах ШІ-моделей: " . $ollamaException->getMessage());
-                
                 return "Приношу вибачення. Наразі мої ШІ-модулі проходять технічне обслуговування. Зайдіть, будь ласка, трохи пізніше!";
             }
         }
