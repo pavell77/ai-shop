@@ -1,58 +1,146 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+## **AI-Shop (Precinct13) — E-Commerce Prototype with AI Integration** 
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Сучасний прототип інтернет-магазину, побудований на базі **Laravel 13** , який поєднує класичний, надійно протестований e-commerce функціонал із архітектурою штучного інтелекту. Особливістю проєкту є поєднання сучасної реактивної екосистеми Laravel з автономною системою ШІ-асистентів, яка підтримує автоматичне перемикання на локальні моделі (Fault-Tolerant AI Architecture). Line spacing: 1.25 
 
-## About Laravel
+## **🚀 Основний технологічний стек** 
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- **Backend:** PHP 8.4+ / Laravel 13 
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+- **Frontend & Reactivity:** Livewire 3 (Laravel Volt — файлові компоненти) / Blade / Alpine.js / Tailwind CSS 
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- **Database & Cache:** MySQL 8.4 / Redis / Meilisearch (для миттєвого пошуку товарів) 
 
-## Learning Laravel
+- **Asynchronous Architecture:** Laravel Queues (Драйвер: Redis / Database) 
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+- **Infrastructure:** Laravel Sail (Docker-середовище: App, DB, Redis, Mailpit, Meilisearch, Ollama) 
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+- **Testing:** Pest Framework (Більше 50 функціональних та юніт-тестів) 
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
+## **🚀 Що вже реалізовано в проєкті** 
 
-## Agentic Development
+## **1. Інфраструктура, Фронтенд та Кошик (Реактивний стек)** 
 
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+- Повністю контейнеризоване середовище розробки за допомогою **Laravel Sail** . 
 
-```bash
-composer require laravel/boost --dev
+- Автентифікація користувачів та базовий каркас профілю через **Laravel Breeze** . 
 
-php artisan boost:install
-```
+- **Реактивний каталог та кошик** товарів на базі **Livewire 3 (Volt)** та **Alpine.js** . Компоненти працюють асинхронно, обмінюючись подіями (наприклад, cart-updated), що забезпечує миттєве оновлення лічильників (cart-counter) без перезавантаження сторінок. 
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+## **2. Гнучка архітектура оплати (Pattern Strategy)** 
 
-## Contributing
+Для обробки замовлень впроваджено гнучкий процесор оплат PaymentProcessor, який на основі вибору користувача динамічно підтягує потрібну стратегію (PaymentStrategyInterface): 
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+- CodStrategy — сценарій післяплати (офлайн-оплата при отриманні). 
 
-## Code of Conduct
+- WayForPayStrategy — інтеграція онлайн-платежів. Генерує безпечне посилання на оплату, обробляє редіректи та очікує на відповідні вебхуки. 
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+## **3. Асинхронна пошта та черги (Event-Driven Notifications)** 
 
-## Security Vulnerabilities
+Система сповіщень повністю переведена на асинхронні рейки для забезпечення максимальної швидкості чекауту користувача: 
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+- При оформленні замовлення NotificationService синхронно створює запис у таблиці 
 
-## License
+notification_logs зі статусом pending. 
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+- Сама важка робота — генерація HTML та взаємодія з SMTP-сервером — делегується класу OrderNotificationMail, який реалізує ShouldQueue і миттєво падає в чергу **Redis** . 
+
+- **Точність логування:** Завдяки використанню вбудованих хуків Mailable (dispatched() та failed()), статус у таблиці notification_logs змінюється на sent або failed (із записом перших 500 символів помилки SMTP у error_message) безпосередньо в момент обробки воркером черги. Це гарантує 100% контроль над доставкою листів без уповільнення інтерфейсу. 
+
+## **4. Інтелектуальний ШІ-Асистент (Пакет laravel/ai)** 
+
+Створено кастомного агента StoreAssistant (розширення AnonymousAgent), який виступає в ролі інтерактивного консультанта для клієнтів магазину. 
+
+- **Контекстуалізація:** ШІ динамічно витягує актуальну базу товарів, опис та ціни з MySQL за допомогою Eloquent і формує системний промпт. 
+
+- **Робота з хмарою:** Основним провайдером виступає **Gemini 2.5 Flash** від Google через офіційне API, що забезпечує ідеальну швидкість відповідей українською мовою. 
+
+## **5. Режими стійкості (Fault-Tolerant & Hybrid AI)** 
+
+Реалізовано **план Б** на випадок недоступності зовнішнього ШІ-API: 
+
+- У compose.yaml розгорнуто Docker-контейнер **Ollama** з моделлю qwen2.5-coder:7b. 
+
+- Логіка чату загорнута в try-catch. Якщо Gemini повертає помилку, додаток **миттєво і непомітно для користувача перемикається на локальну Ollama** . 
+
+- **Оптимізація Prompt Processing (Важливо):** Пакет laravel/ai жорстко обмежує запити внутрішнім таймаутом у 60 секунд. Щоб локальна модель гарантовано вкладалася в ліміти без помилок cURL error 28, впроваджено динамічний конструктор StoreAssistant(true). У резервному режимі асистент автоматично переходить на "полегшений промпт" без повного перебору великої MySQL-бази товарів, обробляючи запит за 5–7 секунд. 
+
+## **6. Контроль якості та Тестування (Pest)** 
+
+Проєкт розробляється за стандартами TDD/BDD. Написано **55 Pest-тестів (159 assertions)** , які покривають: 
+
+- Повний життєвий цикл кошика (додавання, зміна кількості, видалення товарів). 
+
+- Процес чекауту для всіх комбінацій доставки («Нова Пошта», «Самовивіз», «Кур'єр») та оплати. 
+
+- Систему контролю доступу на основі ролей (RBAC). 
+
+- Тести ізольовані від зовнішніх сидерів і працюють стабільно як у паралельному режимі, так і при перезапусках інфраструктури. 
+
+## **Інструкція з розгортання та налаштування (Quick** 🛠️� **Start)** 
+
+## **Крок 1. Клонування проєкту** 
+
+Завантажте сирцевий код додатка у локальну папку: 
+
+git clone <url-вашого-репозиторію> cd ai-shop 
+
+## **Крок 2. Підготовка конфігурації оточення** 
+
+Створіть робочий файл .env на основі приведеного прикладу: cp .env.example .env 
+
+Відкрийте створений файл .env та вкажіть ваш діючий API-ключ, драйвер черги і поштову адресу: 
+
+QUEUE_CONNECTION=redis 
+
+MAIL_FROM_ADDRESS="info@pavell.net" 
+
+GEMINI_API_KEY=ваш_реальний_ключ_від_google_ai_studio 
+
+## **Крок 3. Запуск Docker-контейнерів через Sail** 
+
+Встановіть PHP-залежності додатка та підніміть інфраструктуру Sail у фоновому режимі (- d): composer install ./vendor/bin/sail up -d 
+
+_Примітка: Якщо порт 11434 на хост-машині зайнятий системною службою Ollama, Docker-сервіс автоматично прокинеться на зовнішній порт `11435`, не заважаючи локальній роботі._ 
+
+## **Крок 4. Завантаження моделі в контейнер Ollama** 
+
+Для роботи резервного ШІ-режиму стягніть модель всередину ізольованого Dockerволіюму: 
+
+docker exec -it ai-shop-ollama ollama pull qwen2.5-coder:7b 
+
+## **Крок 5. Ініціалізація бази даних та генерація ключів** 
+
+Генеруємо ключ додатка, запускаємо міграції структури БД та наповнюємо її тестовими даними/товарами: 
+
+./vendor/bin/sail artisan key:generate 
+
+./vendor/bin/sail artisan migrate --seed 
+
+## **Крок 6. Скидання кешу конфігурації** 
+
+Очистіть кеш Laravel, щоб він гарантовано перечитав усі свіжі конфігурації та змінні оточення: 
+
+./vendor/bin/sail artisan config:clear 
+
+## **Крок 7. Запуск воркерів черги** 
+
+Щоб асинхронні сповіщення, листи замовлень та фонові задачі ШІ успішно оброблялися, запустіть воркер черги (в окремому вікні терміналу): 
+
+./vendor/bin/sail artisan queue:work 
+
+_(На продакшені для цього налаштовується делікатна зв'язка Supervisor + queue:work)._ 
+
+## **🚀 Запуск тестів** 
+
+Щоб переконатися, що весь e-commerce функціонал, черги, ШІ-модулі та зв'язки моделей працюють стабільно, запустіть повний тестовий пакет Pest: ./vendor/bin/sail pest 
+
+## **🚀 Запуск додатка** 
+
+Проєкт готовий до роботи! Посилання для доступу: 
+
+- **Основний сайт інтернет-магазину:** http://localhost:8080 
+
+- **Локальний поштовий хаб (Mailpit):** http://localhost:8025 _(для миттєвої перевірки надісланих воркером листів та статусів замовлень)_ 
+
+_Проєкт розробляється як демонстраційне портфоліо сучасних підходів до проектування швидких, реактивних e-commerce платформ та інтеграції відмовостійких ШІ-компонентів в екосистему Laravel._ 
+
